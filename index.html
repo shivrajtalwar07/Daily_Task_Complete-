@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>TaskFlow - Daily Task Manager</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #f4f6f8;
+            margin: 0;
+            padding: 30px 15px;
+            color: #222;
+        }
+
+        .container {
+            max-width: 650px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: #2d3748;
+            margin-bottom: 5px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #718096;
+            margin-bottom: 30px;
+        }
+
+        .add-form {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            background: #fff;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+        }
+
+        .add-form input[type="text"] {
+            flex: 1;
+            padding: 10px 12px;
+            border: 1px solid #cbd5e0;
+            border-radius: 6px;
+            font-size: 15px;
+        }
+
+        .add-form button {
+            background: #3182ce;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 15px;
+        }
+
+        .add-form button:hover {
+            background: #2b6cb0;
+        }
+
+        .section {
+            margin-bottom: 25px;
+        }
+
+        .section h2 {
+            font-size: 18px;
+            color: #2d3748;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .badge {
+            background: #e2e8f0;
+            color: #4a5568;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 13px;
+        }
+
+        .task-card {
+            background: #fff;
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+        }
+
+        .task-card.completed {
+            opacity: 0.75;
+        }
+
+        .task-title {
+            font-size: 15px;
+        }
+
+        .completed .task-title {
+            text-decoration: line-through;
+            color: #718096;
+        }
+
+        .task-meta {
+            font-size: 12px;
+            color: #a0aec0;
+            margin-top: 3px;
+        }
+
+        .actions a,
+        .actions button {
+            text-decoration: none;
+            font-size: 13px;
+            padding: 6px 12px;
+            border-radius: 5px;
+            margin-left: 6px;
+            display: inline-block;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .btn-complete {
+            background: #38a169;
+            color: #fff;
+        }
+
+        .btn-complete:hover {
+            background: #2f855a;
+        }
+
+        .btn-delete {
+            background: #e53e3e;
+            color: #fff;
+        }
+
+        .btn-delete:hover {
+            background: #c53030;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #a0aec0;
+            padding: 20px;
+            font-style: italic;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+
+        <h1>📋 TaskFlow</h1>
+        <p class="subtitle">Plan your day · track progress · finish strong</p>
+
+        <!-- Add Task Form -->
+        <form class="add-form" id="addForm">
+            <input type="text" id="taskInput" placeholder="What do you need to do today?" required>
+            <button type="submit">Add Task</button>
+        </form>
+
+        <!-- Pending Tasks -->
+        <div class="section">
+            <h2>🟡 Pending Tasks <span class="badge" id="pendingCount">0</span></h2>
+            <div id="pendingList"></div>
+        </div>
+
+        <!-- Completed Tasks -->
+        <div class="section">
+            <h2>✅ Completed Tasks <span class="badge" id="completedCount">0</span></h2>
+            <div id="completedList"></div>
+        </div>
+
+    </div>
+
+    <script>
+        // In-memory task store (resets on page reload)
+        let tasks = [];
+        let nextId = 1;
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function formatNow() {
+            const d = new Date();
+            return d.toLocaleString();
+        }
+
+        function addTask(title) {
+            tasks.push({
+                id: nextId++,
+                title: title,
+                status: 'pending',
+                createdAt: formatNow(),
+                completedAt: null
+            });
+            render();
+        }
+
+        function completeTask(id) {
+            const task = tasks.find(t => t.id === id);
+            if (task) {
+                task.status = 'completed';
+                task.completedAt = formatNow();
+            }
+            render();
+        }
+
+        function deleteTask(id) {
+            if (!confirm('Delete this task?')) return;
+            tasks = tasks.filter(t => t.id !== id);
+            render();
+        }
+
+        function render() {
+            const pending = tasks.filter(t => t.status === 'pending');
+            const completed = tasks.filter(t => t.status === 'completed');
+
+            document.getElementById('pendingCount').textContent = pending.length;
+            document.getElementById('completedCount').textContent = completed.length;
+
+            const pendingList = document.getElementById('pendingList');
+            pendingList.innerHTML = pending.length === 0
+                ? '<div class="empty-state">No pending tasks. Add one above to get started!</div>'
+                : pending.map(t => `
+                <div class="task-card">
+                    <div>
+                        <div class="task-title">${escapeHtml(t.title)}</div>
+                        <div class="task-meta">Created: ${escapeHtml(t.createdAt)}</div>
+                    </div>
+                    <div class="actions">
+                        <button class="btn-complete" onclick="completeTask(${t.id})">Complete</button>
+                        <button class="btn-delete" onclick="deleteTask(${t.id})">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+
+            const completedList = document.getElementById('completedList');
+            completedList.innerHTML = completed.length === 0
+                ? '<div class="empty-state">Nothing completed yet — finish a task to see it here.</div>'
+                : completed.map(t => `
+                <div class="task-card completed">
+                    <div>
+                        <div class="task-title">${escapeHtml(t.title)}</div>
+                        <div class="task-meta">Completed: ${escapeHtml(t.completedAt)}</div>
+                    </div>
+                    <div class="actions">
+                        <button class="btn-delete" onclick="deleteTask(${t.id})">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        document.getElementById('addForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const input = document.getElementById('taskInput');
+            const title = input.value.trim();
+            if (title) {
+                addTask(title);
+                input.value = '';
+            }
+        });
+
+        render();
+    </script>
+</body>
+
+</html>
